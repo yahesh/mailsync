@@ -1,0 +1,35 @@
+<?php
+
+  # defines the local absolute path to the mail home
+  # do not forget the trailing slash
+  define("LOCAL_ABSOLUTE_PATH", "/srv/mailusers/");  
+
+  # defines the local relative path to the SPAM maildir new
+  # do not forget the leading and trailing slash
+  define("LOCAL_RELATIVE_PATH_SPAM_NEW", "/Maildir/.Junk/new/");
+
+  # defines the local relative path to the maildir new
+  # do not forget the leading and trailing slash
+  define("LOCAL_RELATIVE_PATH_NEW", "/Maildir/new/");
+
+  # defines the local relative path to the maildir tmp
+  # do not forget the leading and trailing slash
+  define("LOCAL_RELATIVE_PATH_TMP", "/Maildir/tmp/");
+
+  # defines if the retrieved mails are deleted or
+  # moved to the remote ./cur folder
+  define("DELETE_ON_SUCCESS", false);
+
+  # defines the maximum mail size in bytes
+  # should be bigger or equal to message_size_limit
+  # of Postfix - remember to set memory_limit of PHP
+  # to about 2.5 * MAX_MAIL_SIZE
+  define("MAX_MAIL_SIZE", 52428800);
+
+  # defines how mails containing spam are detected
+  define("SPAM_HEADER_START", "X-Spam-Status: Yes");
+
+  # defines how mails containing viruses are detected
+  define("VIRUS_HEADER_START", "X-Virus-Status: Infected");
+
+?>

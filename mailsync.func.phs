@@ -1,0 +1,91 @@
+<?php
+
+  // retrieve the name of the mail account folder
+  function get_account($params) {
+    $result = false;
+
+    // $params[0] is script name
+    if (1 < count($params)) {
+      $account = $params[1];
+
+      // account only contains selected characters
+      if (1 === preg_match("/^([0-9a-zA-Z\-\_])*$/", $account)) {
+        $result = $account;
+      } // if (1 === preg_match("/^([0-9a-zA-Z\-\_])*$/", $account))
+    } // if (1 < count($params))
+
+    return $result;
+  } // function get_account($params)
+
+  // retrieve the name of additional config file
+  function get_config($params) {
+    $result = false;
+
+    // $params[0] is script name
+    if (2 < count($params)) {
+      $config = $params[2];
+
+      // config only contains selected characters
+      if (1 === preg_match("/^([0-9a-zA-Z\-\_])*$/", $config)) {
+        $config = dirname(__FILE__) . "/mailsync.conf.$config.phs";
+
+        // additional config file exists
+        if (posix_access($config, POSIX_R_OK)) {
+          $result = $config;
+        } // if (posix_access($config, POSIX_R_OK)))
+      } // if (1 === preg_match("/^([0-9a-zA-Z\-\_])*$/", $config))
+    } // if (2 < count($params))
+
+    return $result;
+  } // function get_param($params)
+
+  // check for spam
+  function is_spam($content) {
+    $result = false;
+
+    $nreturn  = "\n";
+    $rreturn  = "\r";
+    $rnreturn = "\r\n";
+
+    $npos  = strpos($content, $nreturn . $nreturn);
+    $rpos  = strpos($content, $rreturn . $rreturn);
+    $rnpos = strpos($content, $rnreturn . $rnreturn);
+
+    // retrieve line breaks in mail content
+    // start with default according to RFC 2822
+    $linebreak = $rnreturn;
+    $linepos   = $rnpos;
+    if ((false !== $npos) && ((false === $linepos) || ($npos < $linepos))) {
+      $linebreak = $nreturn;
+      $linepos   = $npos;
+    }
+    if ((false !== $rpos) && ((false === $linepos) || ($rpos < $linepos))) {
+      $linebreak = $rreturn;
+      $linepos   = $rpos;
+    }
+
+    // retrieve header to work with and split
+    // it into an array of lines
+    $header = substr($content, 0, $linepos);
+    $header = explode($linebreak, $header);
+
+    for ($index = 0; $index < count($header); $index++) {
+      $line = trim($header[$index]);
+
+      // check for spam
+      if ((0 < strlen(SPAM_HEADER_START)) && (0 === stripos($line, SPAM_HEADER_START))) {
+        $result = true;
+        break;
+      }
+
+      // check for virus
+      if ((0 < strlen(VIRUS_HEADER_START)) && (0 === stripos($line, VIRUS_HEADER_START))) {
+        $result = true;
+        break;
+      }
+    }
+
+    return $result;
+  } // function is_spam($content)
+
+?>

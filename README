@@ -1,0 +1,11 @@
+README:
+
+1.)  Copy all mailsync.* files to a location that can not be accessed remotely.
+2.)  Install https://hg.nhg.name/unchroot/
+3.)  Configure mailsync.conf.phs and make sure that all paths are accessible.
+4.)  Configure mailsync.conf.example.phs and make sure that all paths are accessible.
+5.)  mailsync.phs is called this way: sudo php mailsync.phs <user> <server>
+5a.) mailsync.phs takes the configuration from mailsync.conf.<server>.phs
+5b.) mailsync.phs copies the mail files via SFTP from /remote/path/<user> to /local/path/<user>
+6.)  Configure CRON to call mailsync.phs regularly:
+     */5 * * * * root php /path/to/mailsync.phs <user> <server> >/dev/null 2>&1

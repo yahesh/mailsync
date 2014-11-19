@@ -1,0 +1,166 @@
+<?php
+
+  /*
+    mailsync connects via SFTP to a remove mail
+    server and moves the received mails from the
+    remote maildir to a local maildir. These are
+    the steps:
+      * connect to the remote server with a general user
+      * go to Maildir of user $x
+      * list mails of user $x in remote ./new
+      * copy mails of user $x from reote ./new to local ./tmp
+      * copy mails of user $x from local ./tmp to local ./new
+      * delete mails of user $x from remote ./new
+  */
+
+  require_once(dirname(__FILE__) . "/../unchroot/unchroot.phs");
+
+  require_once(dirname(__FILE__) . "/mailsync.conf.phs");
+  require_once(dirname(__FILE__) . "/mailsync.func.phs");
+
+  // load optional config splitting
+  $arg_config = get_config($argv);
+  if (false !== $arg_config) {
+    require_once($arg_config);
+  }
+
+  function mailsync($account) {
+    // check if there really is a mail home
+    if (is_dir(LOCAL_ABSOLUTE_PATH . $account)) {
+      // get file privileges of mail home
+      $gid = filegroup(LOCAL_ABSOLUTE_PATH . $account);
+      $uid = fileowner(LOCAL_ABSOLUTE_PATH . $account);
+
+      // check if ./new, ./.Junk/new and ./tmp in Maildir exist
+      if (is_dir(LOCAL_ABSOLUTE_PATH . $account . LOCAL_RELATIVE_PATH_NEW) &&
+          is_dir(LOCAL_ABSOLUTE_PATH . $account . LOCAL_RELATIVE_PATH_SPAM_NEW) &&
+          is_dir(LOCAL_ABSOLUTE_PATH . $account . LOCAL_RELATIVE_PATH_TMP)) {
+        // drop process privileges to file privileges
+        if (force_unroot($uid, $gid)) {
+          // disallow concurrency (either by timeout or by lock file)
+          if (disallow_concurrency(LOCAL_ABSOLUTE_PATH . $account . TIMEOUT)) {
+            // check if ./new, ./.Junk/new and ./tmp are write-accessible
+            if (posix_access(LOCAL_ABSOLUTE_PATH . $account . LOCAL_RELATIVE_PATH_NEW, POSIX_R_OK | POSIX_W_OK) &&
+                posix_access(LOCAL_ABSOLUTE_PATH . $account . LOCAL_RELATIVE_PATH_SPAM_NEW, POSIX_R_OK | POSIX_W_OK) &&
+                posix_access(LOCAL_ABSOLUTE_PATH . $account . LOCAL_RELATIVE_PATH_TMP, POSIX_R_OK | POSIX_W_OK)) {          
+              // connect via SSHv2
+              $connection = ssh2_connect(REMOTE_HOSTNAME, REMOTE_PORT);
+              if (false !== $connection) {
+                // authenticate
+                if (ssh2_auth_password($connection, REMOTE_USERNAME, REMOTE_PASSWORD)) {
+                  // use SFTP subsystem
+                  $sftp = ssh2_sftp($connection);
+                  if (false !== $sftp) {
+                    // read folder list
+                    $dir_handle = opendir("ssh2.sftp://$sftp" . REMOTE_ABSOLUTE_PATH . $account . REMOTE_RELATIVE_PATH_NEW);
+                    $files      = array();
+                    if (false !== $dir_handle) {
+                      $filename = false;
+                      do {
+                        $filename = readdir($dir_handle);
+
+                        if (false !== $filename) {
+                          if (is_file("ssh2.sftp://$sftp" . REMOTE_ABSOLUTE_PATH . $account . REMOTE_RELATIVE_PATH_NEW . $filename)) {
+                            array_push($files, $filename);
+                          } // if (is_file(...))
+                        } // if (false !== $filename)
+                      } while (false !== $filename); // do
+
+                      closedir($dir_handle);
+                    } // if (false !== $dir_handle)
+
+                    // handle found files
+                    if (0 < count($files)) {
+                      for ($index = 0; $index < count($files); $index++) {
+                        $local_new  = LOCAL_ABSOLUTE_PATH . $account . LOCAL_RELATIVE_PATH_NEW . $files[$index];
+                        $local_spam = LOCAL_ABSOLUTE_PATH . $account . LOCAL_RELATIVE_PATH_SPAM_NEW . $files[$index];
+                        $local_tmp  = LOCAL_ABSOLUTE_PATH . $account . LOCAL_RELATIVE_PATH_TMP . $files[$index];
+                        $remote_cur = "ssh2.sftp://$sftp" . REMOTE_ABSOLUTE_PATH . $account . REMOTE_RELATIVE_PATH_CUR . $files[$index];
+                        $remote_new = "ssh2.sftp://$sftp" . REMOTE_ABSOLUTE_PATH . $account . REMOTE_RELATIVE_PATH_NEW . $files[$index];
+
+                        // retrieve file size for later checks
+                        $filesize_remote = filesize($remote_new);
+                        if (false !== $filesize_remote) {
+                          // check that file size is smaller or equal
+                          // to MAX_MAIL_SIZE, ignore if MAX_MAIL_SIZE <= 0
+                          if ((MAX_MAIL_SIZE >= $filesize_remote) || (MAX_MAIL_SIZE <= 0)) {
+                            // retrieve file contents
+                            $content = file_get_contents($remote_new);
+                            if (false !== $content) {
+                              // write local file
+                              if (false !== file_put_contents($local_tmp, $content)) {
+                                // check file size
+                                $filesize_local = filesize($local_tmp);
+                                if ((false !== $filesize_local) && ($filesize_local === $filesize_remote)) {
+                                  // move to inbox or to spam?
+                                  $local_target = $local_new;
+                                  if (is_spam($content)) {
+                                    $local_target = $local_spam;
+                                  } // if (is_spam($content))
+
+                                  // move file to target position
+                                  if (rename($local_tmp, $local_target)) {
+                                    // check file size a last time before deleting source
+                                    $filesize_local = filesize($local_target);
+                                    if ((false !== $filesize_local) && ($filesize_local === $filesize_remote)) {
+                                      // retrieved mails shall be deleted or moved
+                                      if (DELETE_ON_SUCCESS) {
+                                        // delete source
+                                        unlink($remote_new);
+                                      } else {
+                                        // move source
+                                        rename($remote_new, $remote_cur);
+                                      }
+                                    } // if ((false !== $filesize_local) && ($filesize_local === $filesize_remote))
+                                  } // if (rename($local_tmp, $local_target))
+                                } // if ((false !== $filesize_local) && ($filesize_local === $filesize_remote))
+                              } // if (false !== file_put_contents($local_tmp, $content))
+                            } // if (false !== $content)
+                          } // if ((MAX_MAIL_SIZE >= $filesize_remote) || (MAX_MAIL_SIZE <= 0))
+                        } // if (false !== $filesize_remote)
+                      } // for ($index = 0; $index < count($files); $index++)
+                    } // if (0 < count($files))
+                  } // if (false !== $sftp)
+                } // if (ssh2_auth_password($connection, REMOTE_USERNAME, REMOTE_PASSWORD))
+
+                $connection = null;
+              } // if (false !== $connection)
+            } // if (posix_access(...) && posix_access(...) && posix_access(...))
+
+            // free lock
+            allow_concurrency(LOCAL_ABSOLUTE_PATH . $account . TIMEOUT);
+          } // if (disallow_concurrency(LOCAL_ABSOLUTE_PATH . $account . TIMEOUT))
+        } // if (force_unchroot($uid, $gid))
+      } // if (is_dir(...) && is_dir(...) && is_dir(...))
+    } // if (is_dir(LOCAL_ABSOLUTE_PATH . $account))
+  } // function mailsync()
+
+  $arg_account = get_account($argv);
+  if (false !== $arg_account) {
+    if (defined("LOCAL_ABSOLUTE_PATH") &&
+        defined("LOCAL_RELATIVE_PATH_NEW") &&
+        defined("LOCAL_RELATIVE_PATH_SPAM_NEW") &&
+        defined("LOCAL_RELATIVE_PATH_TMP") &&
+        defined("REMOTE_ABSOLUTE_PATH") &&
+        defined("REMOTE_RELATIVE_PATH_CUR") &&
+        defined("REMOTE_RELATIVE_PATH_NEW") &&
+        defined("REMOTE_HOSTNAME") &&
+        defined("REMOTE_PORT") &&
+        defined("REMOTE_USERNAME") &&
+        defined("REMOTE_PASSWORD") &&
+        defined("DELETE_ON_SUCCESS") &&
+        defined("SPAM_HEADER_START") &&
+        defined("VIRUS_HEADER_START") &&
+        defined("TIMEOUT")) {
+      mailsync($arg_account);
+    } else {
+      print("ERROR: missing configuration - split \$config?\n");
+    }
+  } else {
+    print("mailsync.phs v0.1\n");
+    print("\n");
+    print("Usage:\n");
+    print("sudo php ./mailsync.phs \$account [\$config]\n");
+  }
+
+?>

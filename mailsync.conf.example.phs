@@ -1,0 +1,33 @@
+<?php
+
+  # define timeout for PHP execution (as int)
+  # alternatively defines a lock file (as string)
+  # lock file is relative to the LOCAL_ABSOLUTE_PATH
+  # of the current user - do not forget leading slash 
+  define("TIMEOUT", "/lock.example");
+
+  # defines the remote absolute path to the mail home
+  # do not forget the trailing slash
+  define("REMOTE_ABSOLUTE_PATH", "/srv/mailusers/");
+
+  # defines the remote relative path to the maildir cur
+  # do not forget the leading and trailing slash
+  define("REMOTE_RELATIVE_PATH_CUR", "/Maildir/cur/");
+
+  # defines the remote relative path to the maildir new
+  # do not forget the leading and trailing slash
+  define("REMOTE_RELATIVE_PATH_NEW", "/Maildir/new/");
+
+  # defines the remote hostname
+  define("REMOTE_HOSTNAME", "<REPLACE-ME>");
+
+  # defines the remote port
+  define("REMOTE_PORT", 22);
+
+  # defines the remote user
+  define("REMOTE_USERNAME", "<REPLACE-ME>");
+
+  # defines the remote password
+  define("REMOTE_PASSWORD", "<REPLACE-ME>");
+
+?>
