@@ -1,2 +1,6 @@
+Version: 0.1a2
+* now supports RETRY_ON_FAILURE to prevent multiple failing sync attempts
+* now supports push notification for errors through pushinfo.phs and pushover.net
+
 VERSION: 0.1a1
 * initial version

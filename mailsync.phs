@@ -62,78 +62,211 @@
                         if (false !== $filename) {
                           if (is_file("ssh2.sftp://$sftp" . REMOTE_ABSOLUTE_PATH . $account . REMOTE_RELATIVE_PATH_NEW . $filename)) {
                             array_push($files, $filename);
-                          } // if (is_file(...))
-                        } // if (false !== $filename)
-                      } while (false !== $filename); // do
+                          }
+                        }
+                      } while (false !== $filename);
 
                       closedir($dir_handle);
-                    } // if (false !== $dir_handle)
+                    }
+
+                    // load last status to know which changes took place
+                    $new_status = array();
+                    $old_status = array();
+                    if (file_exists(LOCAL_ABSOLUTE_PATH . $account . STATUS_PATH)) {
+                      $old_status = file(LOCAL_ABSOLUTE_PATH . $account . STATUS_PATH, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+
+                      // split $old_status into filename and cause
+                      for ($index = 0; $index < count($old_status); $index++) {
+                        $old_status[$index] = explode("\t", $old_status[$index]);
+                      }
+                    }
 
                     // handle found files
+                    // handle found files
+                    $new_count = 0;
+                    $old_count = 0;
                     if (0 < count($files)) {
+                      // load list of mails to retry despite failure
+                      $retry_status = array();
+                      if (file_exists(LOCAL_ABSOLUTE_PATH . $account . RETRY_STATUS_PATH)) {
+                        $retry_status = file(LOCAL_ABSOLUTE_PATH . $account . RETRY_STATUS_PATH, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+                      }
+
                       for ($index = 0; $index < count($files); $index++) {
-                        $local_new  = LOCAL_ABSOLUTE_PATH . $account . LOCAL_RELATIVE_PATH_NEW . $files[$index];
-                        $local_spam = LOCAL_ABSOLUTE_PATH . $account . LOCAL_RELATIVE_PATH_SPAM_NEW . $files[$index];
-                        $local_tmp  = LOCAL_ABSOLUTE_PATH . $account . LOCAL_RELATIVE_PATH_TMP . $files[$index];
-                        $remote_cur = "ssh2.sftp://$sftp" . REMOTE_ABSOLUTE_PATH . $account . REMOTE_RELATIVE_PATH_CUR . $files[$index];
-                        $remote_new = "ssh2.sftp://$sftp" . REMOTE_ABSOLUTE_PATH . $account . REMOTE_RELATIVE_PATH_NEW . $files[$index];
+                        // check if we shall proceed or skip otherwise
+                        // it is important that is executed or else we
+                        // later don't know that this is an old entry
+                        // this is shown by (0 <= $old_index)
+                        $old_index = -1;
+                        if (0 < count($old_status)) {
+                          for ($index2 = 0; $index2 < count($old_status); $index2++) {
+                            if (false !== $old_status[$index2]) {
+                              if (0 === strcasecmp($files[$index], $old_status[$index2][0])) {
+                                // mission accomplished - file found in list
+                                $old_index = $index2;
+                                break;
+                              }
+                            }
+                          }
+                        }
 
-                        // retrieve file size for later checks
-                        $filesize_remote = filesize($remote_new);
-                        if (false !== $filesize_remote) {
-                          // check that file size is smaller or equal
-                          // to MAX_MAIL_SIZE, ignore if MAX_MAIL_SIZE <= 0
-                          if ((MAX_MAIL_SIZE >= $filesize_remote) || (MAX_MAIL_SIZE <= 0)) {
-                            // retrieve file contents
-                            $content = file_get_contents($remote_new);
-                            if (false !== $content) {
-                              // write local file
-                              if (false !== file_put_contents($local_tmp, $content)) {
-                                // check file size
-                                $filesize_local = filesize($local_tmp);
-                                if ((false !== $filesize_local) && ($filesize_local === $filesize_remote)) {
-                                  // move to inbox or to spam?
-                                  $local_target = $local_new;
-                                  if (is_spam($content)) {
-                                    $local_target = $local_spam;
-                                  } // if (is_spam($content))
+                        // define whether we proceed or not
+                        // we either set RETRY_ON_FAILURE or
+                        // $old_index is still -1
+                        $proceed = (RETRY_ON_FAILURE || (0 > $old_index));
 
-                                  // move file to target position
-                                  if (rename($local_tmp, $local_target)) {
-                                    // check file size a last time before deleting source
-                                    $filesize_local = filesize($local_target);
-                                    if ((false !== $filesize_local) && ($filesize_local === $filesize_remote)) {
-                                      // retrieved mails shall be deleted or moved
-                                      if (DELETE_ON_SUCCESS) {
-                                        // delete source
-                                        unlink($remote_new);
+                        // we may proceed anyway if the current file
+                        // is listed in the RETRY_STATUS_PATH file
+                        if (!$proceed) {
+                          // maybe we shall retry anyway
+                          if (0 < count($retry_status)) {
+                            for ($index2 = 0; $index2 < count($retry_status); $index2++) {
+                              if (0 === strcasecmp($files[$index], $retry_status[$index2])) {
+                                // mission accomplished - file found in list
+                                $proceed = true;
+                                break;
+                              }
+                            }
+                          }
+                        }
+
+                        // store the current size of the $new_status
+                        // if this has changed afterwards we know that
+                        // we have encountered an error
+                        $new_status_count = count($new_status);
+
+                        // now we know that we shall proceed
+                        if ($proceed) {
+                          // prepare the local remote paths
+                          $local_new  = LOCAL_ABSOLUTE_PATH . $account . LOCAL_RELATIVE_PATH_NEW . $files[$index];
+                          $local_spam = LOCAL_ABSOLUTE_PATH . $account . LOCAL_RELATIVE_PATH_SPAM_NEW . $files[$index];
+                          $local_tmp  = LOCAL_ABSOLUTE_PATH . $account . LOCAL_RELATIVE_PATH_TMP . $files[$index];
+                          $remote_cur = "ssh2.sftp://$sftp" . REMOTE_ABSOLUTE_PATH . $account . REMOTE_RELATIVE_PATH_CUR . $files[$index];
+                          $remote_new = "ssh2.sftp://$sftp" . REMOTE_ABSOLUTE_PATH . $account . REMOTE_RELATIVE_PATH_NEW . $files[$index];
+
+                          // retrieve file size for later checks
+                          $filesize_remote = filesize($remote_new);
+                          if (false !== $filesize_remote) {
+                            // check that file size is smaller or equal
+                            // to MAX_MAIL_SIZE, ignore if MAX_MAIL_SIZE <= 0
+                            if ((MAX_MAIL_SIZE >= $filesize_remote) || (MAX_MAIL_SIZE <= 0)) {
+                              // retrieve file contents
+                              $content = file_get_contents($remote_new);
+                              if (false !== $content) {
+                                // write local file
+                                if (false !== file_put_contents($local_tmp, $content)) {
+                                  // check file size
+                                  $filesize_local = filesize($local_tmp);
+                                  if ((false !== $filesize_local) && ($filesize_local === $filesize_remote)) {
+                                    // move to inbox or to spam?
+                                    $local_target = $local_new;
+                                    if (is_spam($content)) {
+                                      $local_target = $local_spam;
+                                    }
+
+                                    // move file to target position
+                                    if (rename($local_tmp, $local_target)) {
+                                      // check file size a last time before deleting source
+                                      $filesize_local = filesize($local_target);
+                                      if ((false !== $filesize_local) && ($filesize_local === $filesize_remote)) {
+                                        // retrieved mails shall be deleted or moved
+                                        if (DELETE_ON_SUCCESS) {
+                                          // delete source
+                                          if (unlink($remote_new)) {
+                                            print("DONE: " . $files[$index] . "\n");
+                                          } else {
+                                            array_push($new_status, array($files[$index], "remote unlink failed"));
+                                            print("FAIL: " . $files[$index] . "\n");
+                                          }
+                                        } else {
+                                          // move source
+                                          if (rename($remote_new, $remote_cur)) {
+                                            print("DONE: " . $files[$index] . "\n");
+                                          } else {
+                                            array_push($new_status, array($files[$index], "remote rename failed"));
+                                            print("FAIL: " . $files[$index] . "\n");
+                                          }
+                                        }
                                       } else {
-                                        // move source
-                                        rename($remote_new, $remote_cur);
+                                        array_push($new_status, array($files[$index], "local CUR size mismatch"));
+                                        print("FAIL: " . $files[$index] . "\n");
                                       }
-                                    } // if ((false !== $filesize_local) && ($filesize_local === $filesize_remote))
-                                  } // if (rename($local_tmp, $local_target))
-                                } // if ((false !== $filesize_local) && ($filesize_local === $filesize_remote))
-                              } // if (false !== file_put_contents($local_tmp, $content))
-                            } // if (false !== $content)
-                          } // if ((MAX_MAIL_SIZE >= $filesize_remote) || (MAX_MAIL_SIZE <= 0))
-                        } // if (false !== $filesize_remote)
-                      } // for ($index = 0; $index < count($files); $index++)
-                    } // if (0 < count($files))
-                  } // if (false !== $sftp)
-                } // if (ssh2_auth_password($connection, REMOTE_USERNAME, REMOTE_PASSWORD))
+                                    } else {
+                                      array_push($new_status, array($files[$index], "local rename failed"));
+                                      print("FAIL: " . $files[$index] . "\n");
+                                    }
+                                  } else {
+                                    array_push($new_status, array($files[$index], "local TMP size mismatch"));
+                                    print("FAIL: " . $files[$index] . "\n");
+                                  }
+                                } else {
+                                  array_push($new_status, array($files[$index], "local file write failed"));
+                                  print("FAIL: " . $files[$index] . "\n");
+                                }
+                              } else {
+                                array_push($new_status, array($files[$index], "remote file read failed"));
+                                print("FAIL: " . $files[$index] . "\n");
+                              }
+                            } else {
+                              array_push($new_status, array($files[$index], "remote file size check error"));
+                              print("FAIL: " . $files[$index] . "\n");
+                            }
+                          } else {
+                            array_push($new_status, array($files[$index], "remote file size read error"));
+                            print("FAIL: " . $files[$index] . "\n");
+                          }
+                        } else {
+                          // if we skip a file we still have to add it to the
+                          // $new_status - we already found it so we don't have
+                          // to look for it again
+                          if (0 <= $old_index) {
+                            array_push($new_status, $old_status[$old_index]);
+                            print("IGNORE: " . $files[$index] . "\n");
+                          }
+                        }
+
+                        // if the site of $new_status changes we know
+                        // that we encountered an error
+                        if (count($new_status) > $new_status_count) {
+                          // we already know if this was a retry
+                          if (0 <= $old_index) {
+                            $old_count++;
+                          } else {
+                            $new_count++;
+                          }
+                        }
+                      }
+                    }
+
+                    // retrieve number of gone failures
+                    $gone_count = count($old_status) - $old_count;
+                    if ((0 < $new_count) || (0 < $gone_count)) {
+                      // write notification to file
+                      file_put_contents(PUSHINFO_PATH, count($new_status) . PUSHINFO_MESSAGE . $new_count . PUSHINFO_MESSAGE_NEW . $old_count . PUSHINFO_MESSAGE_OLD . $gone_count . PUSHINFO_MESSAGE_GONE);
+                    }
+
+                    // we're done, now we save the new status
+                    // let's put it into strings first
+                    for ($index = 0; $index < count($new_status); $index++) {
+                      $new_status[$index] = implode("\t", $new_status[$index]);
+                    }
+
+                    // save new status for next execution
+                    file_put_contents(LOCAL_ABSOLUTE_PATH . $account . STATUS_PATH, implode(PHP_EOL, $new_status));
+                  }
+                }
 
                 $connection = null;
-              } // if (false !== $connection)
-            } // if (posix_access(...) && posix_access(...) && posix_access(...))
+              }
+            }
 
             // free lock
             allow_concurrency(LOCAL_ABSOLUTE_PATH . $account . TIMEOUT);
-          } // if (disallow_concurrency(LOCAL_ABSOLUTE_PATH . $account . TIMEOUT))
-        } // if (force_unchroot($uid, $gid))
-      } // if (is_dir(...) && is_dir(...) && is_dir(...))
-    } // if (is_dir(LOCAL_ABSOLUTE_PATH . $account))
-  } // function mailsync()
+          }
+        }
+      }
+    }
+  }
 
   $arg_account = get_account($argv);
   if (false !== $arg_account) {
@@ -151,7 +284,15 @@
         defined("DELETE_ON_SUCCESS") &&
         defined("SPAM_HEADER_START") &&
         defined("VIRUS_HEADER_START") &&
-        defined("TIMEOUT")) {
+        defined("TIMEOUT") &&
+        defined("STATUS_PATH") &&
+        defined("RETRY_STATUS_PATH") &&
+        defined("RETRY_ON_FAILURE") &&
+        defined("PUSHINFO_PATH") &&
+        defined("PUSHINFO_MESSAGE") &&
+        defined("PUSHINFO_MESSAGE_NEW") &&
+        defined("PUSHINFO_MESSAGE_OLD") &&
+        defined("PUSHINFO_MESSAGE_GONE")) {
       mailsync($arg_account);
     } else {
       print("ERROR: missing configuration - split \$config?\n");

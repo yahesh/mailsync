@@ -6,6 +6,21 @@
   # of the current user - do not forget leading slash 
   define("TIMEOUT", "/lock.example");
 
+  # defines where the script stores its status
+  # status file is relative to the LOCAL_ABSOLUTE_PATH
+  # of the current user - do not forget leading slash
+  define("STATUS_PATH", "/status.example");
+
+  # defines where the script looks for mails that
+  # shall be synchronized again despite a previous
+  # synchronization failure
+  # retry status file is relative to the LOCAL_ABSOLUTE_PATH
+  # of the current user - do not forget leading slash
+  define("RETRY_STATUS_PATH", "/retry.example");
+
+  # defines where the push notification is located
+  define("PUSHINFO_PATH", "/srv/pushinfo/messages/mailsync.phs_example");
+
   # defines the remote absolute path to the mail home
   # do not forget the trailing slash
   define("REMOTE_ABSOLUTE_PATH", "/srv/mailusers/");

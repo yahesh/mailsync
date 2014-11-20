@@ -20,6 +20,15 @@
   # moved to the remote ./cur folder
   define("DELETE_ON_SUCCESS", false);
 
+  # defines if mails that failed to be synchronized
+  # shall be synchronized again during the next
+  # execution - if this is set to TRUE each failed
+  # needs to be added to the RETRY_STATUS_PATH file
+  # in order to be resynchronized - this helps to
+  # prevent multiple retrievals and other problems
+  # without prior handling by the administrator
+  define("RETRY_ON_FAILURE", false);
+
   # defines the maximum mail size in bytes
   # should be bigger or equal to message_size_limit
   # of Postfix - remember to set memory_limit of PHP
@@ -31,5 +40,11 @@
 
   # defines how mails containing viruses are detected
   define("VIRUS_HEADER_START", "X-Virus-Status: Infected");
+
+  # defines the push message content
+  define("PUSHINFO_MESSAGE",      " mail synchronizations failed: ");
+  define("PUSHINFO_MESSAGE_NEW",  " new, ");
+  define("PUSHINFO_MESSAGE_OLD",  " old, ");
+  define("PUSHINFO_MESSAGE_GONE", " gone");
 
 ?>
