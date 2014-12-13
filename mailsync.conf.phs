@@ -1,20 +1,75 @@
 <?php
 
-  # defines the local absolute path to the mail home
-  # do not forget the trailing slash
-  define("LOCAL_ABSOLUTE_PATH", "/srv/mailusers/");  
+  # define timeout for PHP execution (as int)
+  # alternatively defines a lock file (as string):
+  # * this path MUST point to a single file
+  # * the optional placeholder {%server} may be used which
+  #   contains the parameter given to the script for execution
+  # * the optional placeholder {%user} may be used which
+  #   contains the parameter given to the script for execution
+  define("TIMEOUT", "/srv/mailusers/{%user}/lock.{%server}");
 
-  # defines the local relative path to the SPAM maildir new
-  # do not forget the leading and trailing slash
-  define("LOCAL_RELATIVE_PATH_SPAM_NEW", "/Maildir/.Junk/new/");
+  # defines where the script stores its status:
+  # * this path MUST point to a single file
+  # * the optional placeholder {%server} may be used which
+  #   contains the parameter given to the script for execution
+  # * the optional placeholder {%user} may be used which
+  #   contains the parameter given to the script for execution
+  define("STATUS_PATH", "/srv/mailusers/{%user}/status.{%server}");
 
-  # defines the local relative path to the maildir new
-  # do not forget the leading and trailing slash
-  define("LOCAL_RELATIVE_PATH_NEW", "/Maildir/new/");
+  # defines where the script looks for mails that
+  # shall be synchronized again despite a previous
+  # synchronization failure:
+  # * this path MUST point to a single file
+  # * the optional placeholder {%server} may be used which
+  #   contains the parameter given to the script for execution
+  # * the optional placeholder {%user} may be used which
+  #   contains the parameter given to the script for execution
+  define("RETRY_STATUS_PATH", "/srv/mailusers/{%user}/retry.{%server}");
 
-  # defines the local relative path to the maildir tmp
-  # do not forget the leading and trailing slash
-  define("LOCAL_RELATIVE_PATH_TMP", "/Maildir/tmp/");
+  # defines where the push notification is located:
+  # * this path MUST point to a single file
+  # * the optional placeholder {%server} may be used which
+  #   contains the parameter given to the script for execution
+  # * the optional placeholder {%user} may be used which
+  #   contains the parameter given to the script for execution
+  define("PUSHINFO_PATH", "/srv/pushinfo/messages/mailsync.phs_{%server}");
+
+  # defines the local path to the maildir:
+  # * this path MUST point to a single directory
+  # * do NOT forget the trailing slash
+  # * the optional placeholder {%server} may be used which
+  #   contains the parameter given to the script for execution
+  # * the optional placeholder {%user} may be used which
+  #   contains the parameter given to the script for execution
+  define("LOCAL_MAILDIR", "/srv/mailusers/{%user}/Maildir/");
+
+  # defines the local path to the maildir new:
+  # * this path MUST point to a single directory
+  # * do NOT forget the trailing slash
+  # * the optional placeholder {%server} may be used which
+  #   contains the parameter given to the script for execution
+  # * the optional placeholder {%user} may be used which
+  #   contains the parameter given to the script for execution
+  define("LOCAL_MAILDIR_NEW", LOCAL_MAILDIR . "new/");
+
+  # defines the local path to the maildir tmp:
+  # * this path MUST point to a single directory
+  # * do NOT forget the trailing slash
+  # * the optional placeholder {%server} may be used which
+  #   contains the parameter given to the script for execution
+  # * the optional placeholder {%user} may be used which
+  #   contains the parameter given to the script for execution
+  define("LOCAL_MAILDIR_TMP", LOCAL_MAILDIR . "tmp/");
+
+  # defines the local path to the SPAM maildir new:
+  # * this path MUST point to a single directory
+  # * do NOT forget the trailing slash
+  # * the optional placeholder {%server} may be used which
+  #   contains the parameter given to the script for execution
+  # * the optional placeholder {%user} may be used which
+  #   contains the parameter given to the script for execution
+  define("LOCAL_MAILDIR_SPAM_NEW", LOCAL_MAILDIR . ".Junk/new/");
 
   # defines if the retrieved mails are deleted or
   # moved to the remote ./cur folder
