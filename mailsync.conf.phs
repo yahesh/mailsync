@@ -77,9 +77,9 @@
 
   # defines if mails that failed to be synchronized
   # shall be synchronized again during the next
-  # execution - if this is set to TRUE each failed
-  # needs to be added to the RETRY_STATUS_PATH file
-  # in order to be resynchronized - this helps to
+  # execution - if this is set to FALSE each failed
+  # file needs to be added to the RETRY_STATUS_PATH
+  # file in order to be resynchronized - this helps to
   # prevent multiple retrievals and other problems
   # without prior handling by the administrator
   define("RETRY_ON_FAILURE", false);
