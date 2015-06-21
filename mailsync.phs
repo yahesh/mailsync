@@ -1,7 +1,10 @@
 <?php
 
   /*
-    mailsync.phs version 0.2
+    mailsync.phs version 0.3
+
+    [version 0.3]
+    * now supports DELETE_AFTER_DAYS to delete successfully retrieved mails
 
     [version 0.2]
     * completely rewrote path configuration
@@ -292,15 +295,63 @@
                       print("INFO: no files to handle\n");
                     }
 
+                    // delete successfully retrieved files
+                    $del_count = 0;
+                    $del_fail  = 0;
+                    $del_keep  = 0;
+                    if ((!DELETE_ON_SUCCESS) &&
+                        (is_int(DELETE_AFTER_DAYS)) &&
+                        (0 < DELETE_AFTER_DAYS)) {
+                      // get list of files
+                      $del_files = expand_path_list(REMOTE_MAILDIR_CUR . "*", $params, $sftp);
+
+                      // only proceed when files have been found
+                      if ((false !== $del_files) && (0 < count($del_files))) {
+                        for ($index = 0; $index < count($del_files); $index++) {
+                          $del_remote = "ssh2.sftp://$sftp" .
+                                        sftp_fix_root($del_files[$index]);
+
+                          // only proceed with existing files
+                          if (is_file($del_remote)) {
+                            // only proceed when file has waited DELETE_AFTER_DAYS number of days
+                            $del_filemtime = filemtime($del_remote);
+                            if ((false !== $del_filemtime) &&
+                                ((time() - (DELETE_AFTER_DAYS*24*60*60)) >= $del_filemtime)) {
+                              // delete file
+                              if (unlink($del_remote)) {
+                                $del_count++;
+
+                                print("DEL: " . $del_files[$index] . "\n");
+                              } else {
+                                $del_fail++;
+
+                                print("DELFAIL: " . $del_files[$index] . "\n");
+                              }
+                            } else {
+                              $del_keep++;
+
+                              print("DELKEEP: " . $del_files[$index] . "\n");
+                            }
+                          }
+                        }
+                      }
+                    }
+
                     // retrieve number of gone failures
                     $gone_count = count($old_status) - $old_count;
-                    if ((0 < $new_count) || (0 < $gone_count)) {
+                    if ((0 < $new_count) ||
+                        (0 < $gone_count) ||
+                        (0 < $del_count) ||
+                        (0 < $del_fail)) {
                       // write notification to file
                       file_put_contents(expand_path_single(PUSHINFO_PATH, $params),
                                         count($new_status) . PUSHINFO_MESSAGE .
                                         $new_count . PUSHINFO_MESSAGE_NEW .
                                         $old_count . PUSHINFO_MESSAGE_OLD .
-                                        $gone_count . PUSHINFO_MESSAGE_GONE);
+                                        $gone_count . PUSHINFO_MESSAGE_GONE .
+                                        $del_count . PUSHINFO_MESSAGE_DEL .
+                                        $del_fail . PUSHINFO_MESSAGE_DELFAIL . 
+                                        $del_keep . PUSHINFO_MESSAGE_DELKEEP);
                     }
 
                     // we're done, now we save the new status
@@ -358,6 +409,7 @@
       defined("REMOTE_USERNAME") &&
       defined("REMOTE_PASSWORD") &&
       defined("DELETE_ON_SUCCESS") &&
+      defined("DELETE_AFTER_DAYS") &&
       defined("SPAM_HEADER_START") &&
       defined("VIRUS_HEADER_START") &&
       defined("TIMEOUT") &&
@@ -368,7 +420,10 @@
       defined("PUSHINFO_MESSAGE") &&
       defined("PUSHINFO_MESSAGE_NEW") &&
       defined("PUSHINFO_MESSAGE_OLD") &&
-      defined("PUSHINFO_MESSAGE_GONE")) {
+      defined("PUSHINFO_MESSAGE_GONE") &&
+      defined("PUSHINFO_MESSAGE_DEL") &&
+      defined("PUSHINFO_MESSAGE_DELFAIL") &&
+      defined("PUSHINFO_MESSAGE_DELKEEP")) {
     // retrieve server parameter
     $params = array();
     if (false !== get_server($argv)) {

@@ -33,7 +33,7 @@
   #   contains the parameter given to the script for execution
   # * the optional placeholder {%user} may be used which
   #   contains the parameter given to the script for execution
-  define("PUSHINFO_PATH", "/srv/pushinfo/messages/mailsync.phs_{%server}");
+  define("PUSHINFO_PATH", "/srv/pushinfo/messages/mailsync.phs_{%user}_{%server}");
 
   # defines the local path to the maildir:
   # * this path MUST point to a single directory
@@ -75,6 +75,12 @@
   # moved to the remote ./cur folder
   define("DELETE_ON_SUCCESS", false);
 
+  # defines that successfully retrieved should be deleted
+  # from the remote server after a certain number of days:
+  # * must be bigger than zero
+  # * DELETE_ON_SUCCESS must be set to false
+  define("DELETE_AFTER_DAYS", -1);
+
   # defines if mails that failed to be synchronized
   # shall be synchronized again during the next
   # execution - if this is set to FALSE each failed
@@ -97,9 +103,12 @@
   define("VIRUS_HEADER_START", "X-Virus-Status: Infected");
 
   # defines the push message content
-  define("PUSHINFO_MESSAGE",      " mail synchronizations failed: ");
-  define("PUSHINFO_MESSAGE_NEW",  " new, ");
-  define("PUSHINFO_MESSAGE_OLD",  " old, ");
-  define("PUSHINFO_MESSAGE_GONE", " gone");
+  define("PUSHINFO_MESSAGE",         " mail synchronizations failed: ");
+  define("PUSHINFO_MESSAGE_NEW",     " new, ");
+  define("PUSHINFO_MESSAGE_OLD",     " old, ");
+  define("PUSHINFO_MESSAGE_GONE",    " gone, ");
+  define("PUSHINFO_MESSAGE_DEL",     " deleted, ");
+  define("PUSHINFO_MESSAGE_DELFAIL", " deletes failed, ");
+  define("PUSHINFO_MESSAGE_DELKEEP", " deletes ignored");
 
 ?>
