@@ -1,43 +1,48 @@
 <?php
 
-  // retrieve the name of the mail account folder
-  function get_account($params) {
+  function get_server($params) {
+    $result = false;
+
+    // $params[0] is script name
+    // $params[1] is user
+    if (2 < count($params)) {
+      // may only contain selected characters
+      if (1 === preg_match("/^([0-9a-zA-Z\-\_])*$/", $params[2])) {
+        $result = $params[2];
+      }
+    }
+
+    return $result;
+  }
+
+  // retrieve the name of the additional config file
+  function get_server_config($params) {
+    $result = false;
+
+    $server = get_server($params);
+    if (false !== $server) {
+      // check if the additional config file exists
+      if (posix_access(dirname(__FILE__) . "/mailsync.conf.$server.phs", POSIX_R_OK)) {
+        $result = dirname(__FILE__) . "/mailsync.conf.$server.phs";
+      }
+    }
+
+    return $result;
+  }
+
+  function get_user($params) {
     $result = false;
 
     // $params[0] is script name
     if (1 < count($params)) {
-      $account = $params[1];
-
-      // account only contains selected characters
-      if (1 === preg_match("/^([0-9a-zA-Z\-\_])*$/", $account)) {
-        $result = $account;
-      } // if (1 === preg_match("/^([0-9a-zA-Z\-\_])*$/", $account))
-    } // if (1 < count($params))
+      // may only contain selected characters
+      if (1 === preg_match("/^([0-9a-zA-Z\-\_])*$/", $params[1])) {
+        $result = $params[1];
+      }
+    }
 
     return $result;
-  } // function get_account($params)
-
-  // retrieve the name of additional config file
-  function get_config($params) {
-    $result = false;
-
-    // $params[0] is script name
-    if (2 < count($params)) {
-      $config = $params[2];
-
-      // config only contains selected characters
-      if (1 === preg_match("/^([0-9a-zA-Z\-\_])*$/", $config)) {
-        $config = dirname(__FILE__) . "/mailsync.conf.$config.phs";
-
-        // additional config file exists
-        if (posix_access($config, POSIX_R_OK)) {
-          $result = $config;
-        } // if (posix_access($config, POSIX_R_OK)))
-      } // if (1 === preg_match("/^([0-9a-zA-Z\-\_])*$/", $config))
-    } // if (2 < count($params))
-
-    return $result;
-  } // function get_param($params)
+  }
 
   // check for spam
   function is_spam($content) {
@@ -86,6 +91,6 @@
     }
 
     return $result;
-  } // function is_spam($content)
+  }
 
 ?>
