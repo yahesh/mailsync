@@ -24,6 +24,16 @@
   # defines the remote port
   define("REMOTE_PORT", 22);
 
+  # defines the file that contains the remote public key
+  # * this path MUST point to a single file
+  # * the optional placeholder {%server} may be used which
+  #   contains the parameter given to the script for execution
+  # * the optional placeholder {%user} may be used which
+  #   contains the parameter given to the script for execution
+  # * set this value to null to deactivate remote the remote
+  #   public key check
+  define("REMOTE_PUBKEY_FILE", __DIR__."/{%server}.pub");
+
   # defines the remote user
   define("REMOTE_USERNAME", "<REPLACE-ME>");
 

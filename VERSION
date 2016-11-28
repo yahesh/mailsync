@@ -1,3 +1,6 @@
+[version 0.4]
+* rewrote SFTP access to use phpseclib instead of PECL-SSH2
+
 [version 0.3]
 * now supports DELETE_AFTER_DAYS to delete successfully retrieved mails
 
