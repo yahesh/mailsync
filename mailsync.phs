@@ -1,7 +1,7 @@
 <?php
 
   /*
-    mailsync.phs 0.4
+    mailsync.phs 0.5
 
     mailsync connects via SFTP to a remove mail
     server and moves the received mails from the
@@ -16,7 +16,7 @@
   */
 
   // some composer magic
-  require(__DIR__."/vendor/autoload.php");
+  require(__DIR__."/../vendor/autoload.php");
 
   // we use the SFTP class
   use phpseclib\Net\SFTP;
@@ -186,12 +186,17 @@
                                           array_push($new_status, array($remote_new, "remote unlink failed"));
                                         }
                                       } else {
-                                        // move source
-                                        if ($sftp->rename($remote_new, $remote_cur)) {
-                                          // we're done with this file
-                                          $success = true;
+                                        // touch source
+                                        if ($sftp->touch($remote_new)) {
+                                          // move source
+                                          if ($sftp->rename($remote_new, $remote_cur)) {
+                                            // we're done with this file
+                                            $success = true;
+                                          } else {
+                                            array_push($new_status, array($remote_new, "remote rename failed"));
+                                          }
                                         } else {
-                                          array_push($new_status, array($remote_new, "remote rename failed"));
+                                          array_push($new_status, array($remote_new, "remote touch failed"));
                                         }
                                       }
                                     } else {

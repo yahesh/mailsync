@@ -1,3 +1,6 @@
+[version 0.5]
+* remote files are touched before rename from NEW to CUR to prevent instant deletes when the sync script handles older mails
+
 [version 0.4]
 * rewrote SFTP access to use phpseclib instead of PECL-SSH2
 
