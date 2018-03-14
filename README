@@ -1,8 +1,8 @@
 README:
 
 1.) Copy all mailsync.* files to a location that can not be accessed remotely.
-2.) Install https://hg.nhg.name/pushinfo/
-3.) Install https://hg.nhg.name/unchroot/
+2.) Install https://github.com/yahesh/pushinfo/
+3.) Install https://github.com/yahesh/unchroot/
 4.) Execute: composer require phpseclib/phpseclib
 5.) Configure mailsync.conf.phs and make sure that all paths are accessible.
 6.) Configure mailsync.conf.example.phs and make sure that all paths are accessible.

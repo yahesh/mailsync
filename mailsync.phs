@@ -10,7 +10,7 @@
       * connect to the remote server with a general user
       * go to Maildir of user $x
       * list mails of user $x in remote ./new
-      * copy mails of user $x from reote ./new to local ./tmp
+      * copy mails of user $x from remote ./new to local ./tmp
       * copy mails of user $x from local ./tmp to local ./new
       * delete mails of user $x from remote ./new
   */
