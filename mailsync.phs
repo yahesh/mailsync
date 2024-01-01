@@ -1,3 +1,4 @@
+#!/usr/bin/env php
 <?php
 
   /*
@@ -74,6 +75,10 @@
                 if ($sftp->login(REMOTE_USERNAME, REMOTE_PASSWORD)) {
                   // load file list
                   $files = $sftp->nlist(replace_placeholders(REMOTE_MAILDIR_NEW, $params));
+                  if (false === $files) {
+                    $files = [];
+                    print("INFO: remote maildir new is empty\n");
+                  }
 
                   // load last status to know which changes took place
                   $new_status = array();
@@ -259,6 +264,10 @@
                       (0 < DELETE_AFTER_DAYS)) {
                     // get list of files to delete
                     $del_files = $sftp->nlist(replace_placeholders(REMOTE_MAILDIR_CUR, $params));
+                    if (false === $del_files) {
+                      $del_files = [];
+                      print("INFO: remote maildir cur is empty\n");
+                    }
 
                     foreach ($del_files as $del_files_item) {
                       // prepare the remote path
@@ -389,4 +398,3 @@
     print("ERROR: missing configuration - split \$config?\n");
   }
 
-?>
